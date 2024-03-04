@@ -1,0 +1,7 @@
+{
+    "board": "esp32:esp32:esp32wrover",
+    "port": "",
+    "configuration": "PartitionScheme=default,FlashMode=qio,FlashFreq=80,UploadSpeed=921600,DebugLevel=none,EraseFlash=none",
+    "sketch": "arduino/arduino.ino",
+    "output": "output"
+}
