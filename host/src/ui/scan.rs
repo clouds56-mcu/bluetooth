@@ -1,45 +1,68 @@
-use ratatui::{layout::{Constraint, Layout}, widgets::{Clear, Paragraph, Widget}};
+use std::collections::HashMap;
+
+use ratatui::{
+  layout::{Constraint, Layout},
+  prelude::{Buffer, Rect},
+  style::Stylize,
+  text::Line,
+  widgets::{Clear, List, ListItem, Paragraph, Widget}
+};
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
-pub struct Peripheral {
-  local_name: String,
+pub struct PeripheralInfo {
+  pub local_name: String,
+  pub details: HashMap<String, String>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct PeripheralTab {
-  data: Vec<Peripheral>,
-  current: usize,
+  pub data: Vec<PeripheralInfo>,
+  pub current: usize,
 }
 
 impl PeripheralTab {
   pub fn new() -> Self {
     Self {
-      data: vec![Peripheral {
-        local_name: "test".to_string(),
-      }],
+      data: vec![],
       current: 0,
     }
   }
 
   /// Select the previous email (with wrap around).
   pub fn prev(&mut self) {
+    if self.data.is_empty() { return }
     self.current = self.current.saturating_add(self.data.len() - 1) % self.data.len();
   }
 
   /// Select the next email (with wrap around).
   pub fn next(&mut self) {
+    if self.data.is_empty() { return }
     self.current = self.current.saturating_add(1) % self.data.len();
   }
 }
 
 impl Widget for PeripheralTab {
-  fn render(self, area: ratatui::prelude::Rect, buf: &mut ratatui::prelude::Buffer) {
+  fn render(self, area: Rect, buf: &mut Buffer) {
     Clear.render(area, buf);
-    let vertical = Layout::vertical([Constraint::Length(5), Constraint::Min(0)]);
-    let [list, data] = vertical.areas(area);
-    Paragraph::new("list").render(list, buf);
-    Paragraph::new("data").render(data, buf)
-    // render_inbox(self.current, inbox, buf);
-    // render_email(self.current, email, buf);
+    let [list, data] = Layout::horizontal([Constraint::Length(20), Constraint::Min(0)]).areas(area);
+    self.render_list(list, buf);
+    Paragraph::new("data").white().on_blue().render(data, buf);
+  }
+}
+
+impl PeripheralTab {
+  fn render_list(&self, area: Rect, buf: &mut Buffer) {
+    let [header_area, body_area] = Layout::default()
+      .direction(ratatui::layout::Direction::Vertical)
+      .constraints([Constraint::Length(1), Constraint::Min(0)])
+      .areas(area);
+    Paragraph::new("Peripherals").render(header_area, buf);
+    let items = self.data.iter().enumerate().map(|(i, peripheral)| {
+      let name = peripheral.local_name.as_str();
+      let indicator = if i == self.current { "> " } else { "  " };
+      ListItem::new(Line::from(vec![indicator.into(), name.into()]))
+    }).collect::<Vec<_>>();
+    List::new(items)
+      .render(body_area, buf);
   }
 }

@@ -1,9 +1,43 @@
-use btleplug::api::{BDAddr, PeripheralProperties};
-use btleplug::api::{bleuuid::uuid_from_u16, Central, Characteristic, Manager as _, Peripheral as _};
+use btleplug::api::PeripheralProperties;
+use btleplug::api::{Central as _, Manager as _, Peripheral as _};
 use btleplug::platform::{Adapter, Manager, Peripheral};
 use anyhow::Result;
 
-trait PeripheralNameExt {
+use crate::ui;
+
+pub struct State {
+  pub adapters: Vec<Adapter>,
+  pub current_adapter: Adapter,
+  pub peripherals: Vec<Peripheral>,
+}
+
+impl From<&State> for ui::scan::PeripheralTab {
+  fn from(state: &State) -> Self {
+    let data = state.peripherals.iter().map(|p| {
+      let properties = p.get_properties().unwrap_or_default();
+      let details = [
+        ("Address", properties.address.to_string()),
+        ("Address Type", properties.address_type.map(|i| format!("{:?}", i)).unwrap_or_default()),
+        ("Local Name", properties.local_name.unwrap_or_default()),
+        ("Tx Power Level", properties.tx_power_level.map(|i| format!("{:?}", i)).unwrap_or_default()),
+        ("RSSI", properties.rssi.map(|i| format!("{:?}", i)).unwrap_or_default()),
+        ("Manufacturer", format!("{:x?}", properties.manufacturer_data.keys().collect::<Vec<_>>())),
+        ("Services", format!("{:x?}", properties.services)),
+        ("Class", properties.class.map(|i| i.to_string()).unwrap_or_default()),
+      ].iter().map(|(k, v)| (k.to_string(), v.to_string())).collect();
+      ui::scan::PeripheralInfo {
+        local_name: p.local_name().unwrap_or_default(),
+        details,
+      }
+    }).collect();
+    Self {
+      data,
+      current: 0,
+    }
+  }
+}
+
+pub trait PeripheralNameExt {
   fn local_name(&self) -> Option<String>;
   fn get_properties(&self) -> Option<PeripheralProperties>;
 }
@@ -17,8 +51,23 @@ impl PeripheralNameExt for Peripheral {
     futures::executor::block_on(async { btleplug::api::Peripheral::properties(self).await }).ok()?
   }
 }
-// Replace with the actual UUID of the characteristic you want to read
-const CHARACTERISTIC_UUID: u16 = 0x2a23;
+
+impl State {
+  pub fn new() -> Result<Self> {
+    let adapters = futures::executor::block_on(async { Manager::new().await?.adapters().await })?;
+    let current_adapter = adapters.get(0).cloned().unwrap();
+    let peripherals = futures::executor::block_on(async { current_adapter.peripherals().await })?;
+    Ok(Self {
+      adapters,
+      current_adapter,
+      peripherals,
+    })
+  }
+
+  pub async fn update_peripherals(&mut self) {
+    self.peripherals = self.current_adapter.peripherals().await.unwrap();
+  }
+}
 
 #[tokio::main]
 pub async fn demo() -> Result<()> {
