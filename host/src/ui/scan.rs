@@ -15,12 +15,12 @@ pub struct PeripheralInfo {
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct PeripheralTab {
+pub struct ScanTab {
   pub data: Vec<PeripheralInfo>,
   pub current: usize,
 }
 
-impl PeripheralTab {
+impl ScanTab {
   pub fn new() -> Self {
     Self {
       data: vec![],
@@ -41,7 +41,7 @@ impl PeripheralTab {
   }
 }
 
-impl Widget for PeripheralTab {
+impl Widget for ScanTab {
   fn render(self, area: Rect, buf: &mut Buffer) {
     Clear.render(area, buf);
     let [list, data] = Layout::horizontal([Constraint::Length(20), Constraint::Min(0)]).areas(area);
@@ -50,7 +50,7 @@ impl Widget for PeripheralTab {
   }
 }
 
-impl PeripheralTab {
+impl ScanTab {
   fn render_list(&self, area: Rect, buf: &mut Buffer) {
     let [header_area, body_area] = Layout::default()
       .direction(ratatui::layout::Direction::Vertical)

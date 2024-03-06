@@ -2,8 +2,9 @@ use btleplug::api::PeripheralProperties;
 use btleplug::api::{Central as _, Manager as _, Peripheral as _};
 use btleplug::platform::{Adapter, Manager, Peripheral};
 use anyhow::Result;
+use tokio::sync::watch::{Receiver, Sender};
 
-use crate::ui;
+use crate::ui::{self, UiState};
 
 pub struct State {
   pub adapters: Vec<Adapter>,
@@ -11,7 +12,7 @@ pub struct State {
   pub peripherals: Vec<Peripheral>,
 }
 
-impl From<&State> for ui::scan::PeripheralTab {
+impl From<&State> for ui::scan::ScanTab {
   fn from(state: &State) -> Self {
     let data = state.peripherals.iter().map(|p| {
       let properties = p.get_properties().unwrap_or_default();
@@ -64,8 +65,30 @@ impl State {
     })
   }
 
-  pub async fn update_peripherals(&mut self) {
-    self.peripherals = self.current_adapter.peripherals().await.unwrap();
+  pub async fn update_peripherals(&mut self) -> Result<()> {
+    Ok(self.peripherals = self.current_adapter.peripherals().await?)
+  }
+}
+
+pub struct StateStore {
+  state: State,
+  state_tx: Sender<UiState>,
+}
+
+impl StateStore {
+  pub fn new() -> Result<(Self, Receiver<UiState>)> {
+    let state = State::new()?;
+    let (state_tx, state_rx) = tokio::sync::watch::channel(UiState::from(&state));
+    Ok((Self { state, state_tx }, state_rx))
+  }
+
+  pub async fn run(mut self) -> Result<()> {
+    self.state.current_adapter.start_scan(Default::default()).await?;
+    loop {
+      self.state.update_peripherals().await.ok();
+      self.state_tx.send((&self.state).into()).ok();
+      tokio::time::sleep(std::time::Duration::from_micros(500)).await;
+    }
   }
 }
 
