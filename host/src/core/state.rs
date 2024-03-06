@@ -4,7 +4,7 @@ use btleplug::platform::{Adapter, Manager, Peripheral};
 use anyhow::Result;
 use tokio::sync::watch::{Receiver, Sender};
 
-use crate::ui::{self, UiState};
+use crate::ui::{self, Props};
 
 pub struct State {
   pub adapters: Vec<Adapter>,
@@ -72,21 +72,21 @@ impl State {
 
 pub struct StateStore {
   state: State,
-  state_tx: Sender<UiState>,
+  props_tx: Sender<Props>,
 }
 
 impl StateStore {
-  pub fn new() -> Result<(Self, Receiver<UiState>)> {
+  pub fn new() -> Result<(Self, Receiver<Props>)> {
     let state = State::new()?;
-    let (state_tx, state_rx) = tokio::sync::watch::channel(UiState::from(&state));
-    Ok((Self { state, state_tx }, state_rx))
+    let (props_tx, props_rx) = tokio::sync::watch::channel(Props::from(&state));
+    Ok((Self { state, props_tx }, props_rx))
   }
 
   pub async fn run(mut self) -> Result<()> {
     self.state.current_adapter.start_scan(Default::default()).await?;
     loop {
       self.state.update_peripherals().await.ok();
-      self.state_tx.send((&self.state).into()).ok();
+      self.props_tx.send((&self.state).into()).ok();
       tokio::time::sleep(std::time::Duration::from_micros(500)).await;
     }
   }

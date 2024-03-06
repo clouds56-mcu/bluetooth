@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use crossterm::event::{Event, KeyCode, KeyEventKind};
 use ratatui::{
   layout::{Constraint, Layout},
   prelude::{Buffer, Rect},
@@ -7,6 +8,8 @@ use ratatui::{
   text::Line,
   widgets::{Clear, List, ListItem, Paragraph, Widget}
 };
+
+use super::{EventHandler, Stateful};
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct PeripheralInfo {
@@ -38,6 +41,21 @@ impl ScanTab {
   pub fn next(&mut self) {
     if self.data.is_empty() { return }
     self.current = self.current.saturating_add(1) % self.data.len();
+  }
+}
+
+impl EventHandler for ScanTab {
+  fn handle_event(&self, _stateful: &mut Stateful, event: Event) {
+    match event {
+      Event::Key(key) if key.kind == KeyEventKind::Press => {
+        match key.code {
+          // KeyCode::Up => self.prev(),
+          // KeyCode::Down => self.next(),
+          _ => {},
+        }
+      }
+      _ => {},
+    }
   }
 }
 
