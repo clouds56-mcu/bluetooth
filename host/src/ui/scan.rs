@@ -5,10 +5,10 @@ use crossterm::event::{Event, KeyCode, KeyEventKind};
 use ratatui::{
   layout::{Constraint, Layout},
   prelude::{Buffer, Rect},
-  style::Stylize,
   text::Line,
   widgets::{Clear, List, ListItem, Paragraph, Widget}
 };
+use itertools::Itertools;
 use anyhow::Result;
 
 use super::{EventHandler, Stateful};
@@ -78,7 +78,7 @@ impl Widget for ScanTab {
     Clear.render(area, buf);
     let [list, data] = Layout::horizontal([Constraint::Length(20), Constraint::Min(0)]).areas(area);
     self.render_list(list, buf);
-    Paragraph::new("data").white().on_blue().render(data, buf);
+    self.render_detail(data, buf);
   }
 }
 
@@ -100,5 +100,19 @@ impl ScanTab {
     }).collect::<Vec<_>>();
     List::new(items)
       .render(body_area, buf);
+  }
+
+  fn render_detail(&self, area: Rect, buf: &mut Buffer) {
+    let peripheral = self.data.get(self.current);
+    if let Some(peripheral) = peripheral {
+      let details = peripheral.details.iter()
+        .sorted_by(|a, b| a.0.cmp(&b.0))
+        .map(|(k, v)| {
+          ListItem::new(Line::from(vec![k.clone().into(), ": ".into(), v.clone().into()]))
+        })
+        .collect::<Vec<_>>();
+      List::new(details)
+        .render(area, buf);
+    }
   }
 }
